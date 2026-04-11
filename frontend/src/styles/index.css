@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 212 68% 8%;
+  --foreground: 210 40% 98%;
+  --card: 214 52% 12%;
+  --card-foreground: 210 40% 98%;
+  --popover: 214 52% 12%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 197 100% 62%;
+  --primary-foreground: 214 62% 10%;
+  --secondary: 214 35% 20%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 214 28% 18%;
+  --muted-foreground: 215 18% 72%;
+  --accent: 164 76% 54%;
+  --accent-foreground: 214 62% 10%;
+  --destructive: 6 87% 63%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 25% 28%;
+  --input: 214 25% 24%;
+  --ring: 197 100% 62%;
+  --radius: 1.2rem;
+}
+
+* {
+  @apply border-border;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-background font-sans text-foreground antialiased;
+  background-image:
+    radial-gradient(circle at top left, rgba(26, 180, 255, 0.24), transparent 28%),
+    radial-gradient(circle at top right, rgba(36, 199, 155, 0.12), transparent 22%),
+    linear-gradient(180deg, rgba(8, 15, 28, 0.9), rgba(8, 15, 28, 1)),
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.08) 1px, transparent 0);
+  background-size: auto, auto, auto, 24px 24px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  @apply transition-colors;
+}
+
+::selection {
+  background: rgba(26, 180, 255, 0.3);
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-[28px] border border-white/10 bg-white/5 shadow-glass backdrop-blur-xl;
+  }
+
+  .section-title {
+    @apply font-display text-2xl font-semibold tracking-tight text-white;
+  }
+}
+

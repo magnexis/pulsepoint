@@ -1,0 +1,329 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SignalSource {
+  GOOGLE
+  YELP
+  REDDIT
+  NEWS
+}
+
+enum SignalSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SignalTone {
+  ANGRY
+  NEUTRAL
+  POSITIVE
+}
+
+enum SignalType {
+  REVIEW
+  DISCUSSION
+  ARTICLE
+  UPDATE
+}
+
+enum ReportType {
+  COMPLAINT
+  FEEDBACK
+  SCAM_FLAG
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TrendDirection {
+  IMPROVING
+  DECLINING
+  STABLE
+}
+
+enum AlertSeverity {
+  CRITICAL
+  WARNING
+  INFO
+}
+
+enum HiringSource {
+  LINKEDIN
+  INDEED
+}
+
+enum HiringSeniority {
+  ENTRY
+  MID
+  SENIOR
+}
+
+enum HistoryActionType {
+  SEARCH
+  VIEW_BUSINESS
+  SAVE_WATCHLIST
+  REMOVE_WATCHLIST
+  REPORT_SUBMITTED
+  SETTINGS_UPDATED
+  LOGIN
+  REGISTER
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+}
+
+model Business {
+  id                 String         @id @default(cuid())
+  name               String
+  slug               String         @unique
+  category           String
+  description        String
+  address            String
+  city               String
+  state              String
+  postalCode         String?
+  country            String         @default("US")
+  latitude           Float
+  longitude          Float
+  website            String?
+  phone              String?
+  googlePlaceId      String?        @unique
+  yelpBusinessId     String?        @unique
+  healthScore        Int            @default(50)
+  trustScore         Int            @default(50)
+  riskLevel          RiskLevel      @default(MEDIUM)
+  trend              TrendDirection @default(STABLE)
+  responsivenessRate Float          @default(0)
+  activityLevel      Float          @default(0)
+  lastSignalAt       DateTime?
+  lastSyncedAt       DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  alerts             Alert[]
+  hiringSignals      HiringSignal[]
+  historyItems       HistoryItem[]
+  reports            Report[]
+  signalLogs         SignalLog[]
+  signals            Signal[]
+  trendSnapshots     TrendSnapshot[]
+  watchlistItems     Watchlist[]
+
+  @@index([name])
+  @@index([city, state])
+  @@index([healthScore, riskLevel])
+}
+
+model Signal {
+  id                  String       @id @default(cuid())
+  businessId          String
+  source              SignalSource
+  signalCount         Int          @default(0)
+  weightedSentiment   Float        @default(0)
+  complaintCount      Int          @default(0)
+  responseRate        Float        @default(0)
+  activityLevel       Float        @default(0)
+  lastCapturedAt      DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  business            Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, source])
+  @@index([businessId, source])
+}
+
+model SignalLog {
+  id         String         @id @default(cuid())
+  businessId String
+  source     SignalSource
+  externalId String
+  signalType SignalType     @default(REVIEW)
+  tone       SignalTone
+  severity   SignalSeverity
+  sentiment  Float
+  content    String
+  sourceUrl  String?
+  metadata   Json?
+  occurredAt DateTime
+  createdAt  DateTime       @default(now())
+  business   Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, occurredAt(sort: Desc)])
+  @@index([source, occurredAt(sort: Desc)])
+  @@unique([businessId, source, externalId])
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  username       String         @unique
+  password       String
+  bio            String         @default("")
+  profileImage   String?
+  isPrivate      Boolean        @default(false)
+  isSharingData  Boolean        @default(true)
+  isBanned       Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  alertReads     AlertRead[]
+  historyItems   HistoryItem[]
+  reports        Report[]
+  sessions       LoginSession[]
+  settings       UserSettings?
+  watchlistItems Watchlist[]
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  businessId  String
+  userId      String?
+  type        ReportType
+  title       String
+  description String
+  severity    Int
+  sentiment   Int          @default(0)
+  status      ReportStatus @default(OPEN)
+  createdAt   DateTime     @default(now())
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
+}
+
+model Alert {
+  id          String        @id @default(cuid())
+  businessId  String
+  severity    AlertSeverity
+  category    String
+  title       String
+  description String
+  metricDelta Float?
+  baseline    Float?
+  createdAt   DateTime      @default(now())
+  resolvedAt  DateTime?
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reads       AlertRead[]
+
+  @@index([businessId, createdAt(sort: Desc)])
+  @@index([severity, createdAt(sort: Desc)])
+}
+
+model TrendSnapshot {
+  id                 String         @id @default(cuid())
+  businessId         String
+  healthScore        Int
+  trustScore         Int
+  riskLevel          RiskLevel
+  trend              TrendDirection
+  weightedSentiment  Float
+  complaintVelocity  Float
+  activityConsistency Float
+  responsivenessRate Float
+  createdAt          DateTime       @default(now())
+  business           Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt(sort: Desc)])
+}
+
+model HiringSignal {
+  id          String          @id @default(cuid())
+  businessId  String
+  source      HiringSource
+  externalId  String
+  role        String
+  frequency   Int
+  department  String
+  seniority   HiringSeniority
+  occurredAt  DateTime
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, occurredAt(sort: Desc)])
+  @@unique([businessId, source, externalId])
+}
+
+model UserSettings {
+  id                    String   @id @default(cuid())
+  userId                 String   @unique
+  notifications          Json
+  privacy                Json
+  preferences            Json
+  apiKey                 String?
+  apiKeyCreatedAt        DateTime?
+  apiUsageCount          Int      @default(0)
+  twoFactorEnabled       Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Watchlist {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model HistoryItem {
+  id         String            @id @default(cuid())
+  userId     String
+  businessId String?
+  actionType HistoryActionType
+  label      String
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+  business   Business?         @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model LoginSession {
+  id          String        @id @default(cuid())
+  userId      String
+  label       String
+  ipAddress   String?
+  lastSeenAt  DateTime      @default(now())
+  status      SessionStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lastSeenAt(sort: Desc)])
+}
+
+model AlertRead {
+  id        String   @id @default(cuid())
+  alertId    String
+  userId     String
+  createdAt  DateTime @default(now())
+  alert      Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([alertId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+}

@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pulsepoint-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pulsepoint
+      POSTGRES_USER: pulsepoint
+      POSTGRES_PASSWORD: pulsepoint
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pulsepoint-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://pulsepoint:pulsepoint@postgres:5432/pulsepoint?schema=public
+      PORT: 5000
+      CORS_ORIGIN: http://localhost:8080
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
+      YELP_API_KEY: ${YELP_API_KEY:-}
+      NEWS_API_KEY: ${NEWS_API_KEY:-}
+      ENABLE_SYNC_JOBS: ${ENABLE_SYNC_JOBS:-true}
+      SYNC_LOOKBACK_MINUTES: ${SYNC_LOOKBACK_MINUTES:-15}
+      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-600}
+      SEARCH_CACHE_TTL_SECONDS: ${SEARCH_CACHE_TTL_SECONDS:-300}
+      LINKEDIN_JOBS_URL_TEMPLATE: ${LINKEDIN_JOBS_URL_TEMPLATE:-}
+      INDEED_JOBS_URL_TEMPLATE: ${INDEED_JOBS_URL_TEMPLATE:-https://www.indeed.com/jobs?q={query}&l={location}}
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5000}
+    container_name: pulsepoint-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
