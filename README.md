@@ -5,6 +5,7 @@
 [![Database](https://img.shields.io/badge/database-PostgreSQL-336791?style=for-the-badge)](./backend/prisma/schema.prisma)
 [![Container Ready](https://img.shields.io/badge/container-ready-2496ed?style=for-the-badge)](./docker-compose.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-black?style=for-the-badge)](./LICENSE)
+[![npm](https://img.shields.io/npm/v/pulsepoint-2?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/pulsepoint-2)
 
 PulsePoint is a production-oriented business intelligence SaaS platform for monitoring local business trust, operational risk, customer sentiment, and hiring momentum from live external signals.
 
