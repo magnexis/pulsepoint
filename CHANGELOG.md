@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1
+
+### Bug Fixes
+
+- Fixed plaintext password storage; passwords are now properly hashed with bcrypt.
+- Fixed authentication bypass on login and session validation endpoints.
+- Fixed admin role escalation allowing non-admin users to access admin-only functionality.
+
 ## 1.1.0 - 2026-04-11
 
 - Expanded PulsePoint into a route-complete SaaS shell with public, auth, user, owner, settings, admin, and custom error pages
