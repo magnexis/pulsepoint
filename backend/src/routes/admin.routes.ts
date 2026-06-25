@@ -10,8 +10,11 @@ import {
   editBusinessScoreController,
   removeReportController,
 } from "../controllers/admin.controller.js";
+import { requireAdmin } from "../utils/userContext.js";
 
 export const adminRouter = Router();
+
+adminRouter.use(requireAdmin);
 
 adminRouter.get("/admin", adminOverviewController);
 adminRouter.get("/admin/users", adminUsersController);

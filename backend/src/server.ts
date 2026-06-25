@@ -34,16 +34,12 @@ app.get("/health", (_request, response) => {
   });
 });
 
-app.use(async (request, _response, next) => {
-  try {
-    await attachCurrentUser(request);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
+// Auth routes are public (login/register)
 app.use(authRouter);
+
+// All other routes require authentication
+app.use(attachCurrentUser);
+
 app.use(businessRouter);
 app.use(analyticsRouter);
 app.use(reportRouter);

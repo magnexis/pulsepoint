@@ -32,6 +32,7 @@ const booleanFromString = (fallback: boolean) =>
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
+  JWT_SECRET: z.string().min(1),
   PORT: numberFromString(5000),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   GOOGLE_PLACES_API_KEY: z.string().optional(),

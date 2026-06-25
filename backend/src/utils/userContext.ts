@@ -1,9 +1,24 @@
-import type { Request } from "express";
+import type { Request, Response, NextFunction } from "express";
 
-import { env } from "./env.js";
 import { prisma } from "./prisma.js";
+import { env } from "./env.js";
+import { verifyToken } from "../services/auth.service.js";
 
-type CurrentUser = Awaited<ReturnType<typeof ensureDemoUser>>;
+type CurrentUser = {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  role: string;
+  password: string;
+  bio: string;
+  profileImage: string | null;
+  isPrivate: boolean;
+  isSharingData: boolean;
+  isBanned: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 declare global {
   namespace Express {
@@ -13,73 +28,42 @@ declare global {
   }
 }
 
-function defaultSettingsPayload() {
-  return {
-    notifications: {
-      emailAlerts: true,
-      riskAlerts: true,
-      hiringAlerts: true,
-    },
-    privacy: {
-      visibility: "private",
-      shareData: true,
-    },
-    preferences: {
-      theme: "midnight",
-      plan: "growth",
-    },
-  };
-}
+export async function attachCurrentUser(request: Request, response: Response, next: NextFunction) {
+  try {
+    const authHeader = request.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 
-export async function ensureDemoUser() {
-  const user = await prisma.user.upsert({
-    where: {
-      email: env.DEMO_USER_EMAIL,
-    },
-    update: {
-      name: env.DEMO_USER_NAME,
-      username: env.DEMO_USER_USERNAME,
-    },
-    create: {
-      name: env.DEMO_USER_NAME,
-      email: env.DEMO_USER_EMAIL,
-      username: env.DEMO_USER_USERNAME,
-      password: "demo-password",
-    },
-  });
+    if (!token) {
+      response.status(401).json({ error: { code: "UNAUTHORIZED", message: "Authentication required." } });
+      return;
+    }
 
-  await prisma.userSettings.upsert({
-    where: {
-      userId: user.id,
-    },
-    update: {},
-    create: {
-      userId: user.id,
-      ...defaultSettingsPayload(),
-    },
-  });
+    const payload = verifyToken(token);
+    if (!payload) {
+      response.status(401).json({ error: { code: "UNAUTHORIZED", message: "Invalid or expired token." } });
+      return;
+    }
 
-  return user;
-}
-
-export async function resolveCurrentUser(request: Request) {
-  const requestedUserId = request.header("x-user-id");
-
-  if (requestedUserId) {
     const user = await prisma.user.findUnique({
-      where: {
-        id: requestedUserId,
-      },
+      where: { id: payload.sub },
     });
 
-    if (user) {
-      return user;
+    if (!user) {
+      response.status(401).json({ error: { code: "UNAUTHORIZED", message: "User not found." } });
+      return;
     }
-  }
 
-  return ensureDemoUser();
+    request.currentUser = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function attachCurrentUser(request: Request) {
-  request.currentUser = await resolveCurrentUser(request);
+export function requireAdmin(request: Request, response: Response, next: NextFunction) {
+  if (request.currentUser?.role !== "ADMIN") {
+    response.status(403).json({ error: { code: "FORBIDDEN", message: "Admin access required." } });
+    return;
+  }
+  next();
 }

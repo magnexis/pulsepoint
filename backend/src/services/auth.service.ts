@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
 import { prisma } from "../utils/prisma.js";
+import { env } from "../utils/env.js";
 import { recordHistory } from "./history.service.js";
 
 function createSessionLabel() {
@@ -12,6 +16,7 @@ function serializeUser(user: {
   name: string;
   email: string;
   username: string;
+  role: string;
   bio: string;
   profileImage: string | null;
   isPrivate: boolean;
@@ -22,11 +27,16 @@ function serializeUser(user: {
     name: user.name,
     email: user.email,
     username: user.username,
+    role: user.role,
     bio: user.bio,
     profileImage: user.profileImage,
     isPrivate: user.isPrivate,
     isSharingData: user.isSharingData,
   };
+}
+
+function signToken(userId: string, role: string) {
+  return jwt.sign({ sub: userId, role }, env.JWT_SECRET, { expiresIn: "7d" });
 }
 
 async function createSession(userId: string) {
@@ -46,7 +56,7 @@ export async function loginUser(input: { email: string; password: string }) {
     },
   });
 
-  if (!user || user.password !== input.password) {
+  if (!user || !(await bcrypt.compare(input.password, user.password))) {
     throw new Error("Invalid email or password.");
   }
 
@@ -55,6 +65,7 @@ export async function loginUser(input: { email: string; password: string }) {
   }
 
   const session = await createSession(user.id);
+  const token = signToken(user.id, user.role);
   await recordHistory({
     userId: user.id,
     actionType: "LOGIN",
@@ -63,6 +74,7 @@ export async function loginUser(input: { email: string; password: string }) {
 
   return {
     user: serializeUser(user),
+    token,
     session: {
       id: session.id,
       label: session.label,
@@ -76,12 +88,14 @@ export async function registerUser(input: {
   username: string;
   password: string;
 }) {
+  const passwordHash = await bcrypt.hash(input.password, 12);
+
   const user = await prisma.user.create({
     data: {
       name: input.name,
       email: input.email,
       username: input.username,
-      password: input.password,
+      password: passwordHash,
       settings: {
         create: {
           notifications: {
@@ -103,6 +117,7 @@ export async function registerUser(input: {
   });
 
   const session = await createSession(user.id);
+  const token = signToken(user.id, user.role);
   await recordHistory({
     userId: user.id,
     actionType: "REGISTER",
@@ -111,6 +126,7 @@ export async function registerUser(input: {
 
   return {
     user: serializeUser(user),
+    token,
     session: {
       id: session.id,
       label: session.label,
@@ -160,7 +176,14 @@ export async function revokeSession(userId: string, sessionId: string) {
   return { success: true };
 }
 
+export function verifyToken(token: string): { sub: string; role: string } | null {
+  try {
+    return jwt.verify(token, env.JWT_SECRET) as { sub: string; role: string };
+  } catch {
+    return null;
+  }
+}
+
 export function generateApiKey() {
   return `pp_live_${crypto.randomBytes(18).toString("hex")}`;
 }
-

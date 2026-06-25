@@ -90,6 +90,11 @@ enum SessionStatus {
   REVOKED
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model Business {
   id                 String         @id @default(cuid())
   name               String
@@ -176,6 +181,7 @@ model User {
   email          String         @unique
   username       String         @unique
   password       String
+  role           UserRole       @default(USER)
   bio            String         @default("")
   profileImage   String?
   isPrivate      Boolean        @default(false)
